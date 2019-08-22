@@ -254,8 +254,7 @@ public class AmbariDecommissioner {
 
         Map<String, Long> select = filteredHostList
                 .stream()
-                .filter(hostMetadata -> hostMetadata.getHostMetadataState() == HostMetadataState.UNHEALTHY
-                        && sortedAscending.containsKey(hostMetadata.getHostName()))
+                .filter(hostMetadata -> hostMetadata.getHostMetadataState() == HostMetadataState.UNHEALTHY)
                 .limit(removeCount)
                 .collect(toMap(HostMetadata::getHostName, o -> 0L));
 
