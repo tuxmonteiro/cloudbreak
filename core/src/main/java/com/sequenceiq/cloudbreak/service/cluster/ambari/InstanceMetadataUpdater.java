@@ -37,6 +37,7 @@ import com.google.common.collect.Multimaps;
 import com.sequenceiq.cloudbreak.api.model.stack.instance.InstanceMetadataType;
 import com.sequenceiq.cloudbreak.api.model.stack.instance.InstanceStatus;
 import com.sequenceiq.cloudbreak.cloud.model.Image;
+import com.sequenceiq.cloudbreak.common.type.HostMetadataState;
 import com.sequenceiq.cloudbreak.core.bootstrap.service.host.HostOrchestratorResolver;
 import com.sequenceiq.cloudbreak.domain.json.Json;
 import com.sequenceiq.cloudbreak.domain.stack.Stack;
@@ -47,6 +48,7 @@ import com.sequenceiq.cloudbreak.orchestrator.model.GatewayConfig;
 import com.sequenceiq.cloudbreak.repository.InstanceMetaDataRepository;
 import com.sequenceiq.cloudbreak.service.GatewayConfigService;
 import com.sequenceiq.cloudbreak.service.events.CloudbreakEventService;
+import com.sequenceiq.cloudbreak.service.hostgroup.HostGroupService;
 import com.sequenceiq.cloudbreak.service.messages.CloudbreakMessagesService;
 
 @Component
@@ -73,6 +75,9 @@ public class InstanceMetadataUpdater {
     @Inject
     private CloudbreakMessagesService cloudbreakMessagesService;
 
+    @Inject
+    private HostGroupService hostGroupService;
+
     public void updatePackageVersionsOnAllInstances(Stack stack) throws Exception {
         Boolean enableKnox = stack.getCluster().getGateway() != null;
         GatewayConfig gatewayConfig = getGatewayConfig(stack, enableKnox);
@@ -83,7 +88,7 @@ public class InstanceMetadataUpdater {
         Set<InstanceMetaData> instanceMetaDataSet = stack.getNotDeletedInstanceMetaDataSet();
 
         List<String> failedVersionQueriesByHost =
-                updateInstanceMetaDataIfVersionQueryFailed(packageVersionsByNameByHost, instanceMetaDataSet);
+                updateInstanceMetaDataIfVersionQueryFailed(packageVersionsByNameByHost, stack);
         notifyIfVersionsCannotBeQueried(stack, failedVersionQueriesByHost);
 
         Map<String, Multimap<String, String>> changedVersionsByHost =
@@ -108,7 +113,8 @@ public class InstanceMetadataUpdater {
     }
 
     private List<String> updateInstanceMetaDataIfVersionQueryFailed(Map<String, Map<String, String>> packageVersionsByNameByHost,
-            Set<InstanceMetaData> instanceMetaDataSet) throws IOException {
+            Stack stack) throws IOException {
+        Set<InstanceMetaData> instanceMetaDataSet = stack.getNotDeletedInstanceMetaDataSet();
 
         List<String> failedVersionQueriesByHost = Lists.newArrayList();
         for (InstanceMetaData im : instanceMetaDataSet) {
@@ -120,6 +126,7 @@ public class InstanceMetadataUpdater {
                 im.setImage(new Json(image));
                 im.setInstanceStatus(InstanceStatus.ORCHESTRATION_FAILED);
                 instanceMetaDataRepository.save(im);
+                hostGroupService.updateHostMetaDataStatus(stack.getCluster(), im.getDiscoveryFQDN(), HostMetadataState.UNHEALTHY);
             }
         }
         return failedVersionQueriesByHost;
