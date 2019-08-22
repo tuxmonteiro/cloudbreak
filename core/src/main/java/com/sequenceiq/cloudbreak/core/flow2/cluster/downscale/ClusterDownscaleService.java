@@ -19,6 +19,7 @@ import org.springframework.util.CollectionUtils;
 import com.sequenceiq.cloudbreak.api.model.DetailedStackStatus;
 import com.sequenceiq.cloudbreak.api.model.Status;
 import com.sequenceiq.cloudbreak.api.model.stack.instance.InstanceStatus;
+import com.sequenceiq.cloudbreak.common.type.HostMetadataState;
 import com.sequenceiq.cloudbreak.core.flow2.event.ClusterDownscaleDetails;
 import com.sequenceiq.cloudbreak.core.flow2.stack.FlowMessageService;
 import com.sequenceiq.cloudbreak.core.flow2.stack.Msg;
@@ -27,6 +28,7 @@ import com.sequenceiq.cloudbreak.domain.stack.cluster.host.HostGroup;
 import com.sequenceiq.cloudbreak.domain.stack.cluster.host.HostMetadata;
 import com.sequenceiq.cloudbreak.domain.view.ClusterView;
 import com.sequenceiq.cloudbreak.domain.view.StackView;
+import com.sequenceiq.cloudbreak.reactor.api.event.orchestration.RemoveHostsFailed;
 import com.sequenceiq.cloudbreak.reactor.api.event.resource.DecommissionResult;
 import com.sequenceiq.cloudbreak.service.StackUpdater;
 import com.sequenceiq.cloudbreak.service.cluster.ClusterService;
@@ -94,27 +96,38 @@ public class ClusterDownscaleService {
     }
 
     public void updateMetadataStatus(DecommissionResult payload) {
-        if (payload.getErrorPhase() == null) {
-            updateMetadata(payload.getStackId(), payload.getHostNames(), payload.getHostGroupName());
-        } else {
+        if (payload.getErrorPhase() != null) {
             Stack stack = stackService.getByIdWithListsInTransaction(payload.getStackId());
             InstanceStatus status = getStatus(payload.getErrorPhase());
             for (String hostName : payload.getHostNames()) {
                 Map<String, Map<String, String>> statusOfComponents = ambariDecommissioner.getStatusOfComponentsForHost(stack, hostName);
                 LOGGER.info("State of '{}': {}", hostName, statusOfComponents);
                 stackService.updateMetaDataStatusIfFound(payload.getStackId(), hostName, status);
-                String errorDetailes = String.format("The following host are in '%s': %s", status, String.join(", ", payload.getHostNames()));
-                flowMessageService.fireEventAndLog(payload.getStackId(),
-                        Msg.AMBARI_CLUSTER_SCALING_FAILED, UPDATE_FAILED.name(), "removed from", errorDetailes);
+                hostGroupService.updateHostMetaDataStatus(stack.getCluster(), hostName, HostMetadataState.UNHEALTHY);
             }
+            String errorDetailes = String.format("The following hosts are in '%s': %s", status, String.join(", ", payload.getHostNames()));
+            flowMessageService.fireEventAndLog(payload.getStackId(),
+                    Msg.AMBARI_CLUSTER_SCALING_FAILED, UPDATE_FAILED.name(), "removed from", errorDetailes);
         }
+    }
+
+    public void updateMetadataStatus(RemoveHostsFailed payload) {
+        Stack stack = stackService.getByIdWithListsInTransaction(payload.getStackId());
+        for (String hostName : payload.getFailedHostNames()) {
+            Map<String, Map<String, String>> statusOfComponents = ambariDecommissioner.getStatusOfComponentsForHost(stack, hostName);
+            LOGGER.info("State of '{}': {}", hostName, statusOfComponents);
+            stackService.updateMetaDataStatusIfFound(payload.getStackId(), hostName, InstanceStatus.ORCHESTRATION_FAILED);
+            hostGroupService.updateHostMetaDataStatus(stack.getCluster(), hostName, HostMetadataState.UNHEALTHY);
+        }
+        String errorDetailes = String.format("The following hosts are in '%s': %s",
+                InstanceStatus.ORCHESTRATION_FAILED, String.join(", ", payload.getFailedHostNames()));
+        flowMessageService.fireEventAndLog(payload.getStackId(),
+                Msg.AMBARI_CLUSTER_SCALING_FAILED, UPDATE_FAILED.name(), "removed from", errorDetailes);
     }
 
     private InstanceStatus getStatus(String errorPhase) {
         if (errorPhase.equals(DecommissionResult.DECOMMISSION_ERROR_PHASE)) {
-            return InstanceStatus.DECOMMISSIONED_FAILED;
-        } else if (errorPhase.equals(DecommissionResult.ORCHESTRATION_ERROR_PHASE)) {
-            return InstanceStatus.ORCHESTRATION_FAILED;
+            return InstanceStatus.DECOMMISSION_FAILED;
         } else {
             return InstanceStatus.FAILED;
         }

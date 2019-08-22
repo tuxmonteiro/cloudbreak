@@ -2,9 +2,7 @@ package com.sequenceiq.cloudbreak.reactor;
 
 import static com.sequenceiq.cloudbreak.reactor.api.event.resource.DecommissionResult.DECOMMISSION_ERROR_PHASE;
 import static com.sequenceiq.cloudbreak.reactor.api.event.resource.DecommissionResult.UNKNOWN_ERROR_PHASE;
-import static com.sequenceiq.cloudbreak.service.PollingResult.isSuccess;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -26,7 +24,6 @@ import com.sequenceiq.cloudbreak.reactor.api.event.EventSelectorUtil;
 import com.sequenceiq.cloudbreak.reactor.api.event.resource.DecommissionRequest;
 import com.sequenceiq.cloudbreak.reactor.api.event.resource.DecommissionResult;
 import com.sequenceiq.cloudbreak.reactor.handler.ReactorEventHandler;
-import com.sequenceiq.cloudbreak.service.PollingResult;
 import com.sequenceiq.cloudbreak.service.cluster.ambari.AmbariDecommissioner;
 import com.sequenceiq.cloudbreak.service.cluster.ambari.DecommissionException;
 import com.sequenceiq.cloudbreak.service.cluster.flow.recipe.RecipeEngine;
@@ -69,7 +66,7 @@ public class DecommissionHandler implements ReactorEventHandler<DecommissionRequ
         Set<String> hostNames = Collections.emptySet();
         try {
             Stack stack = stackService.getByIdWithListsInTransaction(request.getStackId());
-             hostNames = getHostNamesForPrivateIds(request, stack);
+            hostNames = getHostNamesForPrivateIds(request, stack);
             Map<String, HostMetadata> hostsToRemove = ambariDecommissioner.collectHostsToRemove(stack, hostGroupName, hostNames);
             Set<String> decommissionedHostNames;
             if (skipAmbariDecomission(request, hostsToRemove)) {
@@ -77,10 +74,6 @@ public class DecommissionHandler implements ReactorEventHandler<DecommissionRequ
             } else {
                 executePreTerminationRecipes(stack, request.getHostGroupName(), hostsToRemove.keySet());
                 decommissionedHostNames = ambariDecommissioner.decommissionAmbariNodes(stack, hostsToRemove);
-            }
-            PollingResult orchestratorRemovalPollingResult = ambariDecommissioner.removeHostsFromOrchestrator(stack, new ArrayList<>(decommissionedHostNames));
-            if (!isSuccess(orchestratorRemovalPollingResult)) {
-                LOGGER.warn("Can not remove hosts from orchestrator: {}", decommissionedHostNames);
             }
             result = new DecommissionResult(request, decommissionedHostNames);
         } catch (DecommissionException e) {
