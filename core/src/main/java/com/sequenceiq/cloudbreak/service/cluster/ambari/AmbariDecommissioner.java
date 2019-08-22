@@ -101,9 +101,9 @@ public class AmbariDecommissioner {
 
     private static final String DATANODE = "DATANODE";
 
-    public static final String HBASE_REGIONSERVER = "HBASE_REGIONSERVER";
+    private static final String HBASE_REGIONSERVER = "HBASE_REGIONSERVER";
 
-    public static final String NODEMANAGER = "NODEMANAGER";
+    private static final String NODEMANAGER = "NODEMANAGER";
 
     private static final double SAFETY_PERCENTAGE = 1.2;
 
@@ -327,7 +327,7 @@ public class AmbariDecommissioner {
     }
 
     private Map<String, Map<String, String>> getComponentStatusesForHostes(AmbariClient ambariClient, List<String> hostList, String component) {
-        return hostList.stream().collect(toMap((k -> k), (h -> ambariClient.getComponentStates(h, component))));
+        return hostList.stream().collect(toMap(k -> k, h -> ambariClient.getComponentStates(h, component)));
     }
 
     public Map<String, Map<String, Map<String, String>>> getStatusOfComponents(Stack stack, Collection<String> hosts) {
@@ -335,7 +335,7 @@ public class AmbariDecommissioner {
     }
 
     public Map<String, Map<String, Map<String, String>>> getStatusOfComponents(AmbariClient ambariClient, Collection<String> hosts) {
-        return hosts.stream().collect(toMap((k -> k), (host -> getStatusOfComponentsForHost(ambariClient, host))));
+        return hosts.stream().collect(toMap(k -> k, host -> getStatusOfComponentsForHost(ambariClient, host)));
     }
 
     public Map<String, Map<String, String>> getStatusOfComponentsForHost(Stack stack, String host) {
@@ -346,7 +346,7 @@ public class AmbariDecommissioner {
         return ambariClient.getHostComponentsMap(host).keySet()
                 .stream()
                 .filter(s -> COMPONENTS_NEED_TO_DECOMMISSION.keySet().contains(s))
-                .collect(toMap((k -> k), (v -> ambariClient.getComponentStates(host, v))));
+                .collect(toMap(k -> k, v -> ambariClient.getComponentStates(host, v)));
     }
 
     private void deleteHosts(Iterable<String> hosts, Map<String, Map<String, String>> components, ServiceAndHostService client)
