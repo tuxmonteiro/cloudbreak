@@ -60,4 +60,6 @@ public interface HostOrchestrator extends HostRecipeExecutor {
             ExitCriteriaModel exitCriteriaModel) throws CloudbreakOrchestratorException;
 
     byte[] getStateConfigZip() throws IOException;
+
+    public List<Map<String, Boolean>> checkHostHealth(GatewayConfig gateway, Set<String> targets) throws CloudbreakOrchestratorFailedException;
 }

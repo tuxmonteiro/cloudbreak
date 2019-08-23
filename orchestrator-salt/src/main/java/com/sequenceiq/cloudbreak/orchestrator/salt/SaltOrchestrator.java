@@ -405,6 +405,17 @@ public class SaltOrchestrator implements HostOrchestrator {
         }
     }
 
+    public List<Map<String, Boolean>> checkHostHealth(GatewayConfig gateway, Set<String> targets)
+            throws CloudbreakOrchestratorFailedException {
+        Compound target = new Compound(targets);
+        try (SaltConnector saltConnector = new SaltConnector(gateway, restDebug)) {
+            return SaltStates.ping(saltConnector, target).getResult();
+        } catch (RuntimeException e) {
+            LOGGER.error("Error occurred during check health of host: " + target.getTarget(), e);
+            throw new CloudbreakOrchestratorFailedException(e);
+        }
+    }
+
     public Map<String, String> runCommandOnAllHosts(GatewayConfig gateway, String command) throws CloudbreakOrchestratorFailedException {
         try (SaltConnector saltConnector = new SaltConnector(gateway, restDebug)) {
             return SaltStates.runCommand(saltConnector, command);

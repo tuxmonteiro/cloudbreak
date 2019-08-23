@@ -46,6 +46,7 @@ import com.sequenceiq.cloudbreak.orchestrator.exception.CloudbreakOrchestratorFa
 import com.sequenceiq.cloudbreak.orchestrator.host.HostOrchestrator;
 import com.sequenceiq.cloudbreak.orchestrator.model.GatewayConfig;
 import com.sequenceiq.cloudbreak.repository.InstanceMetaDataRepository;
+import com.sequenceiq.cloudbreak.service.CloudbreakException;
 import com.sequenceiq.cloudbreak.service.GatewayConfigService;
 import com.sequenceiq.cloudbreak.service.events.CloudbreakEventService;
 import com.sequenceiq.cloudbreak.service.hostgroup.HostGroupService;
@@ -77,6 +78,24 @@ public class InstanceMetadataUpdater {
 
     @Inject
     private HostGroupService hostGroupService;
+
+    public void updateInstaceStatusBasedOnSaltHealth(Stack stack) throws CloudbreakException, CloudbreakOrchestratorFailedException {
+        Set<InstanceMetaData> instanceMetaDataSet = stack.getNotDeletedInstanceMetaDataSet();
+        HostOrchestrator hostOrchestrator = hostOrchestratorResolver.get(stack.getOrchestrator().getType());
+        Set<String> targets = instanceMetaDataSet.stream()
+                .map(instanceMetaData -> instanceMetaData.getDiscoveryFQDN()).collect(Collectors.toSet());
+        Boolean enableKnox = stack.getCluster().getGateway() != null;
+        GatewayConfig gatewayConfig = getGatewayConfig(stack, enableKnox);
+        List<Map<String, Boolean>> result = hostOrchestrator.checkHostHealth(gatewayConfig, targets);
+        result.stream().forEach(hostMap -> hostMap.keySet().stream()
+            .forEach(hostName -> {
+                InstanceMetaData instanceMetaData = instanceMetaDataRepository.findHostInStack(stack.getId(), hostName);
+                if (instanceMetaData != null && !hostMap.get(hostName)) {
+                    instanceMetaData.setInstanceStatus(InstanceStatus.ORCHESTRATION_FAILED);
+                    instanceMetaDataRepository.save(instanceMetaData);
+                }
+            }));
+    }
 
     public void updatePackageVersionsOnAllInstances(Stack stack) throws Exception {
         Boolean enableKnox = stack.getCluster().getGateway() != null;
