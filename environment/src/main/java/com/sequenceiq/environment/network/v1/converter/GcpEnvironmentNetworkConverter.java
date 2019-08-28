@@ -3,10 +3,12 @@ package com.sequenceiq.environment.network.v1.converter;
 import static com.sequenceiq.environment.CloudPlatform.GCP;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
 import com.sequenceiq.cloudbreak.cloud.model.network.CreatedCloudNetwork;
+import com.sequenceiq.cloudbreak.cloud.model.network.CreatedSubnet;
 import com.sequenceiq.environment.CloudPlatform;
 import com.sequenceiq.environment.network.dao.domain.BaseNetwork;
 import com.sequenceiq.environment.network.dao.domain.GcpNetwork;
@@ -35,10 +37,10 @@ public class GcpEnvironmentNetworkConverter extends EnvironmentBaseNetworkConver
     public BaseNetwork setProviderSpecificNetwork(BaseNetwork baseNetwork, CreatedCloudNetwork createdCloudNetwork) {
         GcpNetwork gcpNetwork = (GcpNetwork) baseNetwork;
         gcpNetwork.setNetworkId(gcpNetwork.getNetworkId());
-        gcpNetwork.setSharedProjectId(gcpNetwork.getSharedProjectId());
-        gcpNetwork.setSubnetId(gcpNetwork.getSubnetId());
-        gcpNetwork.setNoFirewallRules(gcpNetwork.getNoFirewallRules());
-        gcpNetwork.setNoPublicIp(gcpNetwork.getNoPublicIp());
+        gcpNetwork.setSharedProjectId(String.valueOf(createdCloudNetwork.getProperties().get("sharedProjectId")));
+        gcpNetwork.setSubnetIds(createdCloudNetwork.getSubnets().stream().map(CreatedSubnet::getSubnetId).collect(Collectors.toSet()));
+        gcpNetwork.setNoFirewallRules(Boolean.valueOf(createdCloudNetwork.getProperties().get("noFirewallRules").toString()));
+        gcpNetwork.setNoPublicIp(Boolean.valueOf(createdCloudNetwork.getProperties().get("noPublicIp").toString()));
         return gcpNetwork;
     }
 
