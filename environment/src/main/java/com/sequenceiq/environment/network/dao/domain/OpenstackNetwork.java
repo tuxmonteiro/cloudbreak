@@ -6,18 +6,55 @@ import javax.persistence.Entity;
 @Entity
 @DiscriminatorValue("OPENSTACK")
 public class OpenstackNetwork extends BaseNetwork {
-    private String vpcId;
 
-    public String getVpcId() {
-        return vpcId;
+    private String networkId;
+
+    private String routerId;
+
+    private String subnetId;
+
+    private String publicNetId;
+
+    private String networkingOption;
+
+    public void setNetworkId(String networkId) {
+        this.networkId = networkId;
     }
 
-    public void setVpcId(String vpcId) {
-        this.vpcId = vpcId;
+    public String getRouterId() {
+        return routerId;
+    }
+
+    public void setRouterId(String routerId) {
+        this.routerId = routerId;
+    }
+
+    public String getSubnetId() {
+        return subnetId;
+    }
+
+    public void setSubnetId(String subnetId) {
+        this.subnetId = subnetId;
+    }
+
+    public String getPublicNetId() {
+        return publicNetId;
+    }
+
+    public void setPublicNetId(String publicNetId) {
+        this.publicNetId = publicNetId;
+    }
+
+    public String getNetworkingOption() {
+        return networkingOption;
+    }
+
+    public void setNetworkingOption(String networkingOption) {
+        this.networkingOption = networkingOption;
     }
 
     @Override
     public String getNetworkId() {
-        return vpcId;
+        return networkId;
     }
 }

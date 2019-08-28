@@ -6,18 +6,55 @@ import javax.persistence.Entity;
 @Entity
 @DiscriminatorValue("GCP")
 public class GcpNetwork extends BaseNetwork {
-    private String vpcId;
 
-    public String getVpcId() {
-        return vpcId;
+    private String networkId;
+
+    private String subnetId;
+
+    private String sharedProjectId;
+
+    private Boolean noPublicIp;
+
+    private Boolean noFirewallRules;
+
+    public void setNetworkId(String networkId) {
+        this.networkId = networkId;
     }
 
-    public void setVpcId(String vpcId) {
-        this.vpcId = vpcId;
+    public String getSubnetId() {
+        return subnetId;
+    }
+
+    public void setSubnetId(String subnetId) {
+        this.subnetId = subnetId;
+    }
+
+    public String getSharedProjectId() {
+        return sharedProjectId;
+    }
+
+    public void setSharedProjectId(String sharedProjectId) {
+        this.sharedProjectId = sharedProjectId;
+    }
+
+    public Boolean getNoPublicIp() {
+        return noPublicIp;
+    }
+
+    public void setNoPublicIp(Boolean noPublicIp) {
+        this.noPublicIp = noPublicIp;
+    }
+
+    public Boolean getNoFirewallRules() {
+        return noFirewallRules;
+    }
+
+    public void setNoFirewallRules(Boolean noFirewallRules) {
+        this.noFirewallRules = noFirewallRules;
     }
 
     @Override
     public String getNetworkId() {
-        return vpcId;
+        return networkId;
     }
 }

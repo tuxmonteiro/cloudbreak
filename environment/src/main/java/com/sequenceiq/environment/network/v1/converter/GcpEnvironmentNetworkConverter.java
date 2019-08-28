@@ -20,19 +20,40 @@ public class GcpEnvironmentNetworkConverter extends EnvironmentBaseNetworkConver
     @Override
     BaseNetwork createProviderSpecificNetwork(NetworkDto network) {
         GcpNetwork gcpNetwork = new GcpNetwork();
+        GcpParams gcpParams = network.getGcp();
+        if (gcpParams != null) {
+            gcpNetwork.setNetworkId(gcpParams.getNetworkId());
+            gcpNetwork.setNoFirewallRules(gcpParams.getNoFirewallRules());
+            gcpNetwork.setNoPublicIp(gcpParams.getNoPublicIp());
+            gcpNetwork.setSharedProjectId(gcpParams.getSharedProjectId());
+            gcpNetwork.setSubnetId(gcpParams.getSubnetId());
+        }
         return gcpNetwork;
     }
 
     @Override
     public BaseNetwork setProviderSpecificNetwork(BaseNetwork baseNetwork, CreatedCloudNetwork createdCloudNetwork) {
         GcpNetwork gcpNetwork = (GcpNetwork) baseNetwork;
+        gcpNetwork.setNetworkId(gcpNetwork.getNetworkId());
+        gcpNetwork.setSharedProjectId(gcpNetwork.getSharedProjectId());
+        gcpNetwork.setSubnetId(gcpNetwork.getSubnetId());
+        gcpNetwork.setNoFirewallRules(gcpNetwork.getNoFirewallRules());
+        gcpNetwork.setNoPublicIp(gcpNetwork.getNoPublicIp());
         return gcpNetwork;
     }
 
     @Override
     NetworkDto setProviderSpecificFields(NetworkDto.Builder builder, BaseNetwork network) {
         GcpNetwork gcpNetwork = (GcpNetwork) network;
-        return builder.withGcp(GcpParams.GcpParamsBuilder.aGcpParams().build()).build();
+        GcpParams.GcpParamsBuilder gcpParamsBuilder = GcpParams.GcpParamsBuilder.aGcpParams();
+        Optional.ofNullable(gcpNetwork.getNetworkId()).ifPresent(gcpParamsBuilder::withNetworkId);
+        Optional.ofNullable(gcpNetwork.getNoFirewallRules()).ifPresent(gcpParamsBuilder::withNoFirewallRules);
+        Optional.ofNullable(gcpNetwork.getNoPublicIp()).ifPresent(gcpParamsBuilder::withNoPublicIp);
+        Optional.ofNullable(gcpNetwork.getSharedProjectId()).ifPresent(gcpParamsBuilder::withSharedProjectId);
+        Optional.ofNullable(gcpNetwork.getSubnetId()).ifPresent(gcpParamsBuilder::withSubnetId);
+        return builder
+                .withGcp(gcpParamsBuilder.build())
+                .build();
     }
 
     @Override
@@ -45,7 +66,7 @@ public class GcpEnvironmentNetworkConverter extends EnvironmentBaseNetworkConver
     }
 
     private boolean isExistingNetworkSpecified(NetworkDto networkDto) {
-        return networkDto.getGcp() != null && networkDto.getGcp().getVpcId() != null;
+        return networkDto.getGcp() != null && networkDto.getGcp().getNetworkId() != null;
     }
 
     @Override

@@ -2,18 +2,66 @@ package com.sequenceiq.environment.network.dto;
 
 public class OpenstackParams {
 
-    private String vpcId;
+    private String networkId;
 
-    public String getVpcId() {
-        return vpcId;
+    private String routerId;
+
+    private String subnetId;
+
+    private String publicNetId;
+
+    private String networkingOption;
+
+    public String getNetworkId() {
+        return networkId;
     }
 
-    public void setVpcId(String vpcId) {
-        this.vpcId = vpcId;
+    public void setNetworkId(String networkId) {
+        this.networkId = networkId;
+    }
+
+    public String getRouterId() {
+        return routerId;
+    }
+
+    public void setRouterId(String routerId) {
+        this.routerId = routerId;
+    }
+
+    public String getSubnetId() {
+        return subnetId;
+    }
+
+    public void setSubnetId(String subnetId) {
+        this.subnetId = subnetId;
+    }
+
+    public String getPublicNetId() {
+        return publicNetId;
+    }
+
+    public void setPublicNetId(String publicNetId) {
+        this.publicNetId = publicNetId;
+    }
+
+    public String getNetworkingOption() {
+        return networkingOption;
+    }
+
+    public void setNetworkingOption(String networkingOption) {
+        this.networkingOption = networkingOption;
     }
 
     public static final class OpenstackParamsBuilder {
-        private String vpcId;
+        private String networkId;
+
+        private String routerId;
+
+        private String subnetId;
+
+        private String publicNetId;
+
+        private String networkingOption;
 
         private OpenstackParamsBuilder() {
         }
@@ -22,14 +70,39 @@ public class OpenstackParams {
             return new OpenstackParamsBuilder();
         }
 
-        public OpenstackParamsBuilder withVpcId(String vpcId) {
-            this.vpcId = vpcId;
+        public OpenstackParamsBuilder withNetworkId(String networkId) {
+            this.networkId = networkId;
+            return this;
+        }
+
+        public OpenstackParamsBuilder withRouterId(String routerId) {
+            this.routerId = routerId;
+            return this;
+        }
+
+        public OpenstackParamsBuilder withSubnetId(String subnetId) {
+            this.subnetId = subnetId;
+            return this;
+        }
+
+        public OpenstackParamsBuilder withPublicNetId(String publicNetId) {
+            this.publicNetId = publicNetId;
+            return this;
+        }
+
+
+        public OpenstackParamsBuilder withNetworkingOption(String networkingOption) {
+            this.networkingOption = networkingOption;
             return this;
         }
 
         public OpenstackParams build() {
             OpenstackParams openstackParams = new OpenstackParams();
-            openstackParams.setVpcId(vpcId);
+            openstackParams.setNetworkId(networkId);
+            openstackParams.setNetworkingOption(networkingOption);
+            openstackParams.setPublicNetId(publicNetId);
+            openstackParams.setRouterId(routerId);
+            openstackParams.setSubnetId(subnetId);
             return openstackParams;
         }
     }

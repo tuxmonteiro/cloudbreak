@@ -2,18 +2,67 @@ package com.sequenceiq.environment.network.dto;
 
 public class GcpParams {
 
-    private String vpcId;
+    private String networkId;
 
-    public String getVpcId() {
-        return vpcId;
+    private String subnetId;
+
+    private String sharedProjectId;
+
+    private Boolean noPublicIp;
+
+    private Boolean noFirewallRules;
+
+    public String getNetworkId() {
+        return networkId;
     }
 
-    public void setVpcId(String vpcId) {
-        this.vpcId = vpcId;
+    public void setNetworkId(String networkId) {
+        this.networkId = networkId;
+    }
+
+    public String getSubnetId() {
+        return subnetId;
+    }
+
+    public void setSubnetId(String subnetId) {
+        this.subnetId = subnetId;
+    }
+
+    public String getSharedProjectId() {
+        return sharedProjectId;
+    }
+
+    public void setSharedProjectId(String sharedProjectId) {
+        this.sharedProjectId = sharedProjectId;
+    }
+
+    public Boolean getNoPublicIp() {
+        return noPublicIp;
+    }
+
+    public void setNoPublicIp(Boolean noPublicIp) {
+        this.noPublicIp = noPublicIp;
+    }
+
+    public Boolean getNoFirewallRules() {
+        return noFirewallRules;
+    }
+
+    public void setNoFirewallRules(Boolean noFirewallRules) {
+        this.noFirewallRules = noFirewallRules;
     }
 
     public static final class GcpParamsBuilder {
-        private String vpcId;
+
+        private String networkId;
+
+        private String subnetId;
+
+        private String sharedProjectId;
+
+        private Boolean noPublicIp;
+
+        private Boolean noFirewallRules;
 
         private GcpParamsBuilder() {
         }
@@ -22,14 +71,38 @@ public class GcpParams {
             return new GcpParamsBuilder();
         }
 
-        public GcpParamsBuilder withVpcId(String vpcId) {
-            this.vpcId = vpcId;
+        public GcpParamsBuilder withNetworkId(String networkId) {
+            this.networkId = networkId;
+            return this;
+        }
+
+        public GcpParamsBuilder withSubnetId(String subnetId) {
+            this.subnetId = subnetId;
+            return this;
+        }
+
+        public GcpParamsBuilder withSharedProjectId(String sharedProjectId) {
+            this.sharedProjectId = sharedProjectId;
+            return this;
+        }
+
+        public GcpParamsBuilder withNoPublicIp(Boolean noPublicIp) {
+            this.noPublicIp = noPublicIp;
+            return this;
+        }
+
+        public GcpParamsBuilder withNoFirewallRules(Boolean noFirewallRules) {
+            this.noFirewallRules = noFirewallRules;
             return this;
         }
 
         public GcpParams build() {
             GcpParams gcpParams = new GcpParams();
-            gcpParams.setVpcId(vpcId);
+            gcpParams.setNetworkId(networkId);
+            gcpParams.setSubnetId(subnetId);
+            gcpParams.setSharedProjectId(sharedProjectId);
+            gcpParams.setNoPublicIp(noPublicIp);
+            gcpParams.setNoFirewallRules(noFirewallRules);
             return gcpParams;
         }
     }

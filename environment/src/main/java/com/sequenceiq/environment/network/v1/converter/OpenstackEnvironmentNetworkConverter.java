@@ -3,10 +3,12 @@ package com.sequenceiq.environment.network.v1.converter;
 import static com.sequenceiq.environment.CloudPlatform.OPENSTACK;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
 import com.sequenceiq.cloudbreak.cloud.model.network.CreatedCloudNetwork;
+import com.sequenceiq.cloudbreak.cloud.model.network.CreatedSubnet;
 import com.sequenceiq.environment.CloudPlatform;
 import com.sequenceiq.environment.network.dao.domain.BaseNetwork;
 import com.sequenceiq.environment.network.dao.domain.OpenstackNetwork;
@@ -20,19 +22,38 @@ public class OpenstackEnvironmentNetworkConverter extends EnvironmentBaseNetwork
     @Override
     BaseNetwork createProviderSpecificNetwork(NetworkDto network) {
         OpenstackNetwork openstackNetwork = new OpenstackNetwork();
+        OpenstackParams openstackParams = network.getOpenstack();
+        if (openstackParams != null) {
+            openstackNetwork.setNetworkId(openstackParams.getNetworkId());
+            openstackNetwork.setNetworkingOption(openstackParams.getNetworkingOption());
+            openstackNetwork.setPublicNetId(openstackParams.getPublicNetId());
+            openstackNetwork.setRouterId(openstackParams.getRouterId());
+            openstackNetwork.setSubnetId(openstackParams.getSubnetId());
+        }
         return openstackNetwork;
     }
 
     @Override
     public BaseNetwork setProviderSpecificNetwork(BaseNetwork baseNetwork, CreatedCloudNetwork createdCloudNetwork) {
         OpenstackNetwork openstackNetwork = (OpenstackNetwork) baseNetwork;
+        openstackNetwork.setNetworkId(createdCloudNetwork.getNetworkId());
+        openstackNetwork.setPublicNetId(String.valueOf(createdCloudNetwork.getProperties().get("publicNetId")));
+        openstackNetwork.setSubnetIds(createdCloudNetwork.getSubnets().stream().map(CreatedSubnet::getSubnetId).collect(Collectors.toSet()));
+        openstackNetwork.setNetworkingOption(String.valueOf(createdCloudNetwork.getProperties().get("networkingOption")));
+        openstackNetwork.setRouterId(String.valueOf(createdCloudNetwork.getProperties().get("routerId")));
         return openstackNetwork;
     }
 
     @Override
     NetworkDto setProviderSpecificFields(NetworkDto.Builder builder, BaseNetwork network) {
         OpenstackNetwork openstackNetwork = (OpenstackNetwork) network;
-        return builder.withOpenstack(OpenstackParams.OpenstackParamsBuilder.anOpenstackParams().build()).build();
+        OpenstackParams.OpenstackParamsBuilder openstackParamsBuilder = OpenstackParams.OpenstackParamsBuilder.anOpenstackParams();
+        Optional.ofNullable(openstackNetwork.getNetworkId()).ifPresent(openstackParamsBuilder::withNetworkId);
+        Optional.ofNullable(openstackNetwork.getNetworkingOption()).ifPresent(openstackParamsBuilder::withNetworkingOption);
+        Optional.ofNullable(openstackNetwork.getPublicNetId()).ifPresent(openstackParamsBuilder::withPublicNetId);
+        Optional.ofNullable(openstackNetwork.getRouterId()).ifPresent(openstackParamsBuilder::withRouterId);
+        Optional.ofNullable(openstackNetwork.getSubnetId()).ifPresent(openstackParamsBuilder::withSubnetId);
+        return builder.withOpenstack(openstackParamsBuilder.build()).build();
     }
 
     @Override
@@ -45,7 +66,7 @@ public class OpenstackEnvironmentNetworkConverter extends EnvironmentBaseNetwork
     }
 
     private boolean isExistingNetworkSpecified(NetworkDto networkDto) {
-        return networkDto.getOpenstack() != null && networkDto.getOpenstack().getVpcId() != null;
+        return networkDto.getOpenstack() != null && networkDto.getOpenstack().getNetworkId() != null;
     }
 
     @Override
