@@ -9,8 +9,6 @@ public class GcpNetwork extends BaseNetwork {
 
     private String networkId;
 
-    private String subnetId;
-
     private String sharedProjectId;
 
     private Boolean noPublicIp;
@@ -19,14 +17,6 @@ public class GcpNetwork extends BaseNetwork {
 
     public void setNetworkId(String networkId) {
         this.networkId = networkId;
-    }
-
-    public String getSubnetId() {
-        return subnetId;
-    }
-
-    public void setSubnetId(String subnetId) {
-        this.subnetId = subnetId;
     }
 
     public String getSharedProjectId() {

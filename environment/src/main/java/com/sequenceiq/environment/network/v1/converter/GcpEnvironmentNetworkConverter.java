@@ -28,7 +28,6 @@ public class GcpEnvironmentNetworkConverter extends EnvironmentBaseNetworkConver
             gcpNetwork.setNoFirewallRules(gcpParams.getNoFirewallRules());
             gcpNetwork.setNoPublicIp(gcpParams.getNoPublicIp());
             gcpNetwork.setSharedProjectId(gcpParams.getSharedProjectId());
-            gcpNetwork.setSubnetId(gcpParams.getSubnetId());
         }
         return gcpNetwork;
     }
@@ -52,7 +51,6 @@ public class GcpEnvironmentNetworkConverter extends EnvironmentBaseNetworkConver
         Optional.ofNullable(gcpNetwork.getNoFirewallRules()).ifPresent(gcpParamsBuilder::withNoFirewallRules);
         Optional.ofNullable(gcpNetwork.getNoPublicIp()).ifPresent(gcpParamsBuilder::withNoPublicIp);
         Optional.ofNullable(gcpNetwork.getSharedProjectId()).ifPresent(gcpParamsBuilder::withSharedProjectId);
-        Optional.ofNullable(gcpNetwork.getSubnetId()).ifPresent(gcpParamsBuilder::withSubnetId);
         return builder
                 .withGcp(gcpParamsBuilder.build())
                 .build();

@@ -4,7 +4,6 @@ public class GcpParams {
 
     private String networkId;
 
-    private String subnetId;
 
     private String sharedProjectId;
 
@@ -18,14 +17,6 @@ public class GcpParams {
 
     public void setNetworkId(String networkId) {
         this.networkId = networkId;
-    }
-
-    public String getSubnetId() {
-        return subnetId;
-    }
-
-    public void setSubnetId(String subnetId) {
-        this.subnetId = subnetId;
     }
 
     public String getSharedProjectId() {
@@ -56,8 +47,6 @@ public class GcpParams {
 
         private String networkId;
 
-        private String subnetId;
-
         private String sharedProjectId;
 
         private Boolean noPublicIp;
@@ -73,11 +62,6 @@ public class GcpParams {
 
         public GcpParamsBuilder withNetworkId(String networkId) {
             this.networkId = networkId;
-            return this;
-        }
-
-        public GcpParamsBuilder withSubnetId(String subnetId) {
-            this.subnetId = subnetId;
             return this;
         }
 
@@ -99,7 +83,6 @@ public class GcpParams {
         public GcpParams build() {
             GcpParams gcpParams = new GcpParams();
             gcpParams.setNetworkId(networkId);
-            gcpParams.setSubnetId(subnetId);
             gcpParams.setSharedProjectId(sharedProjectId);
             gcpParams.setNoPublicIp(noPublicIp);
             gcpParams.setNoFirewallRules(noFirewallRules);

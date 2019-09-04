@@ -6,8 +6,6 @@ public class OpenstackParams {
 
     private String routerId;
 
-    private String subnetId;
-
     private String publicNetId;
 
     private String networkingOption;
@@ -26,14 +24,6 @@ public class OpenstackParams {
 
     public void setRouterId(String routerId) {
         this.routerId = routerId;
-    }
-
-    public String getSubnetId() {
-        return subnetId;
-    }
-
-    public void setSubnetId(String subnetId) {
-        this.subnetId = subnetId;
     }
 
     public String getPublicNetId() {
@@ -57,8 +47,6 @@ public class OpenstackParams {
 
         private String routerId;
 
-        private String subnetId;
-
         private String publicNetId;
 
         private String networkingOption;
@@ -80,11 +68,6 @@ public class OpenstackParams {
             return this;
         }
 
-        public OpenstackParamsBuilder withSubnetId(String subnetId) {
-            this.subnetId = subnetId;
-            return this;
-        }
-
         public OpenstackParamsBuilder withPublicNetId(String publicNetId) {
             this.publicNetId = publicNetId;
             return this;
@@ -102,7 +85,6 @@ public class OpenstackParams {
             openstackParams.setNetworkingOption(networkingOption);
             openstackParams.setPublicNetId(publicNetId);
             openstackParams.setRouterId(routerId);
-            openstackParams.setSubnetId(subnetId);
             return openstackParams;
         }
     }

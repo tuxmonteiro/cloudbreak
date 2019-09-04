@@ -28,7 +28,6 @@ public class OpenstackEnvironmentNetworkConverter extends EnvironmentBaseNetwork
             openstackNetwork.setNetworkingOption(openstackParams.getNetworkingOption());
             openstackNetwork.setPublicNetId(openstackParams.getPublicNetId());
             openstackNetwork.setRouterId(openstackParams.getRouterId());
-            openstackNetwork.setSubnetId(openstackParams.getSubnetId());
         }
         return openstackNetwork;
     }
@@ -52,7 +51,6 @@ public class OpenstackEnvironmentNetworkConverter extends EnvironmentBaseNetwork
         Optional.ofNullable(openstackNetwork.getNetworkingOption()).ifPresent(openstackParamsBuilder::withNetworkingOption);
         Optional.ofNullable(openstackNetwork.getPublicNetId()).ifPresent(openstackParamsBuilder::withPublicNetId);
         Optional.ofNullable(openstackNetwork.getRouterId()).ifPresent(openstackParamsBuilder::withRouterId);
-        Optional.ofNullable(openstackNetwork.getSubnetId()).ifPresent(openstackParamsBuilder::withSubnetId);
         return builder.withOpenstack(openstackParamsBuilder.build()).build();
     }
 

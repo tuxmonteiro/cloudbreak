@@ -11,8 +11,6 @@ public class OpenstackNetwork extends BaseNetwork {
 
     private String routerId;
 
-    private String subnetId;
-
     private String publicNetId;
 
     private String networkingOption;
@@ -27,14 +25,6 @@ public class OpenstackNetwork extends BaseNetwork {
 
     public void setRouterId(String routerId) {
         this.routerId = routerId;
-    }
-
-    public String getSubnetId() {
-        return subnetId;
-    }
-
-    public void setSubnetId(String subnetId) {
-        this.subnetId = subnetId;
     }
 
     public String getPublicNetId() {
