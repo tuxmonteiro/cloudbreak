@@ -41,9 +41,12 @@ public class GcpNetworkConnector extends AbstractGcpResourceBuilder implements N
         String networkName = getResourceNameService().resourceName(GCP_NETWORK, networkRequest.getEnvName());
         CloudResource networkNamedResource = createNamedResource(GCP_NETWORK, networkName);
         try {
-            List<CreatedSubnet> subnetList = getCloudSubNets(networkRequest);
             createNetwork(networkRequest, compute, projectId, networkNamedResource);
+
+            List<CreatedSubnet> subnetList = getCloudSubNets(networkRequest);
             for (CreatedSubnet createdSubnet : subnetList) {
+                String subnetName = getResourceNameService().resourceName(GCP_SUBNET, networkRequest.getEnvName());
+                createdSubnet.setSubnetId(subnetName);
                 createSubnet(networkRequest, compute, projectId, networkNamedResource, createdSubnet);
             }
             return new CreatedCloudNetwork(networkRequest.getEnvName(), networkName, getCreatedSubnets(subnetList));
@@ -54,13 +57,13 @@ public class GcpNetworkConnector extends AbstractGcpResourceBuilder implements N
         }
     }
 
-    private void createSubnet(NetworkCreationRequest networkRequest, Compute compute, String projectId, CloudResource namedResource, CreatedSubnet createdSubnet) throws IOException {
+    private void createSubnet(NetworkCreationRequest networkRequest, Compute compute, String projectId, CloudResource network, CreatedSubnet createdSubnet) throws IOException {
         CloudResource subnetResource = createNamedResource(GCP_SUBNET, createdSubnet.getSubnetId());
 
         Subnetwork gcpSubnet = new Subnetwork();
         gcpSubnet.setName(createdSubnet.getSubnetId());
         gcpSubnet.setIpCidrRange(createdSubnet.getCidr());
-        String networkName = namedResource.getName();
+        String networkName = network.getName();
         gcpSubnet.setNetwork(String.format("https://www.googleapis.com/compute/v1/projects/%s/global/networks/%s", projectId, networkName));
         Compute.Subnetworks.Insert snInsert = compute.subnetworks().insert(projectId, networkRequest.getRegion().getRegionName(), gcpSubnet);
         try {

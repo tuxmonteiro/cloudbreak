@@ -2,11 +2,14 @@ package com.sequenceiq.environment.network.v1.converter;
 
 import static com.sequenceiq.environment.CloudPlatform.OPENSTACK;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.cloud.model.CloudSubnet;
 import com.sequenceiq.cloudbreak.cloud.model.network.CreatedCloudNetwork;
 import com.sequenceiq.cloudbreak.cloud.model.network.CreatedSubnet;
 import com.sequenceiq.environment.CloudPlatform;
@@ -36,10 +39,35 @@ public class OpenstackEnvironmentNetworkConverter extends EnvironmentBaseNetwork
     public BaseNetwork setProviderSpecificNetwork(BaseNetwork baseNetwork, CreatedCloudNetwork createdCloudNetwork) {
         OpenstackNetwork openstackNetwork = (OpenstackNetwork) baseNetwork;
         openstackNetwork.setNetworkId(createdCloudNetwork.getNetworkId());
-        openstackNetwork.setPublicNetId(String.valueOf(createdCloudNetwork.getProperties().get("publicNetId")));
+        Map<String, Object> properties = createdCloudNetwork.getProperties();
+        if (properties == null) {
+            properties = new HashMap<>();
+        }
+
+        Object publicNetId = properties.get("publicNetId");
+        openstackNetwork.setPublicNetId(publicNetId == null ? null : publicNetId.toString());
+
+        Object networkingOption = properties.get("networkingOption");
+        openstackNetwork.setNetworkingOption(networkingOption == null ? null : networkingOption.toString());
+
+        Object routerId = properties.get("routerId");
+        openstackNetwork.setRouterId(routerId == null ? null : routerId.toString());
+
         openstackNetwork.setSubnetIds(createdCloudNetwork.getSubnets().stream().map(CreatedSubnet::getSubnetId).collect(Collectors.toSet()));
-        openstackNetwork.setNetworkingOption(String.valueOf(createdCloudNetwork.getProperties().get("networkingOption")));
-        openstackNetwork.setRouterId(String.valueOf(createdCloudNetwork.getProperties().get("routerId")));
+
+        openstackNetwork.setSubnetMetas(createdCloudNetwork.getSubnets().stream()
+                .collect(Collectors.toMap(
+                        CreatedSubnet::getSubnetId, subnet -> new CloudSubnet(
+                                subnet.getSubnetId(),
+                                subnet.getSubnetId(),
+                                subnet.getAvailabilityZone(),
+                                subnet.getCidr(),
+                                subnet.isPrivateSubnet(),
+                                subnet.isMapPublicIpOnLaunch(),
+                                subnet.isIgwAvailable())
+                        )
+                )
+        );
         return openstackNetwork;
     }
 

@@ -2,11 +2,14 @@ package com.sequenceiq.environment.network.v1.converter;
 
 import static com.sequenceiq.environment.CloudPlatform.GCP;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.cloud.model.CloudSubnet;
 import com.sequenceiq.cloudbreak.cloud.model.network.CreatedCloudNetwork;
 import com.sequenceiq.cloudbreak.cloud.model.network.CreatedSubnet;
 import com.sequenceiq.environment.CloudPlatform;
@@ -36,10 +39,36 @@ public class GcpEnvironmentNetworkConverter extends EnvironmentBaseNetworkConver
     public BaseNetwork setProviderSpecificNetwork(BaseNetwork baseNetwork, CreatedCloudNetwork createdCloudNetwork) {
         GcpNetwork gcpNetwork = (GcpNetwork) baseNetwork;
         gcpNetwork.setNetworkId(gcpNetwork.getNetworkId());
-        gcpNetwork.setSharedProjectId(String.valueOf(createdCloudNetwork.getProperties().get("sharedProjectId")));
+
+        Map<String, Object> properties = createdCloudNetwork.getProperties();
+        if (properties == null) {
+            properties = new HashMap<>();
+        }
+
+        Object sharedProjectId = properties.get("sharedProjectId");
+        gcpNetwork.setSharedProjectId(sharedProjectId == null ? null : sharedProjectId.toString());
+
+        Object noFirewallRules = properties.get("noFirewallRules");
+        gcpNetwork.setNoFirewallRules(noFirewallRules == null ? false : Boolean.valueOf(noFirewallRules.toString()));
+
+        Object noPublicIp = properties.get("noPublicIp");
+        gcpNetwork.setNoPublicIp(noPublicIp == null ? false : Boolean.valueOf(noPublicIp.toString()));
+
         gcpNetwork.setSubnetIds(createdCloudNetwork.getSubnets().stream().map(CreatedSubnet::getSubnetId).collect(Collectors.toSet()));
-        gcpNetwork.setNoFirewallRules(Boolean.valueOf(createdCloudNetwork.getProperties().get("noFirewallRules").toString()));
-        gcpNetwork.setNoPublicIp(Boolean.valueOf(createdCloudNetwork.getProperties().get("noPublicIp").toString()));
+
+        gcpNetwork.setSubnetMetas(createdCloudNetwork.getSubnets().stream()
+                .collect(Collectors.toMap(
+                        CreatedSubnet::getSubnetId, subnet -> new CloudSubnet(
+                                subnet.getSubnetId(),
+                                subnet.getSubnetId(),
+                                subnet.getAvailabilityZone(),
+                                subnet.getCidr(),
+                                subnet.isPrivateSubnet(),
+                                subnet.isMapPublicIpOnLaunch(),
+                                subnet.isIgwAvailable())
+                        )
+                )
+        );
         return gcpNetwork;
     }
 
