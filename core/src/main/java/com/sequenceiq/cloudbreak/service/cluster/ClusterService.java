@@ -39,6 +39,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Sets;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.DatabaseVendor;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.DetailedStackStatus;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.ResourceStatus;
@@ -531,7 +532,10 @@ public class ClusterService {
         }
     }
 
-    public void failureReport(String crn, List<String> failedNodes) {
+    public void reportHealthChange(String crn, Set<String> failedNodes, Set<String> newHealthyNodes) {
+        if (!Sets.intersection(failedNodes, newHealthyNodes).isEmpty()) {
+            throw new BadRequestException("Failed nodes " + failedNodes + " and healthy nodes " + newHealthyNodes + " should not have common items.");
+        }
         try {
             transactionService.required(() -> {
                 Stack stack = stackService.findByCrn(crn);
@@ -556,23 +560,34 @@ public class ClusterService {
                         failedHostMetadata.put(failedNode, hostMetadata.get());
                     }
                 }
-                try {
-                    if (!autoRecoveryNodesMap.isEmpty()) {
-                        flowManager.triggerClusterRepairFlow(stackId, autoRecoveryNodesMap, false);
-                        String recoveryMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_AUTORECOVERY_REQUESTED.code(),
-                                Collections.singletonList(autoRecoveryNodesMap));
-                        updateChangedHosts(cluster, autoRecoveryHostMetadata, HostMetadataState.HEALTHY, HostMetadataState.WAITING_FOR_REPAIR, recoveryMessage);
-                    }
-                    if (!failedHostMetadata.isEmpty()) {
-                        String recoveryMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_FAILED_NODES_REPORTED.code(),
-                                Collections.singletonList(failedHostMetadata.keySet()));
-                        updateChangedHosts(cluster, failedHostMetadata, HostMetadataState.HEALTHY, HostMetadataState.UNHEALTHY, recoveryMessage);
-                    }
-                } catch (TransactionExecutionException e) {
-                    throw new TransactionRuntimeExecutionException(e);
-                }
+                handleChangedHosts(cluster, newHealthyNodes, autoRecoveryNodesMap, autoRecoveryHostMetadata, failedHostMetadata);
                 return null;
             });
+        } catch (TransactionExecutionException e) {
+            throw new TransactionRuntimeExecutionException(e);
+        }
+    }
+
+    private void handleChangedHosts(Cluster cluster, Set<String> newHealthyNodes,
+            Map<String, List<String>> autoRecoveryNodesMap, Map<String, HostMetadata> autoRecoveryHostMetadata, Map<String, HostMetadata> failedHostMetadata) {
+        try {
+            if (!autoRecoveryNodesMap.isEmpty()) {
+                flowManager.triggerClusterRepairFlow(cluster.getStack().getId(), autoRecoveryNodesMap, false);
+                String recoveryMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_AUTORECOVERY_REQUESTED.code(),
+                        Collections.singletonList(autoRecoveryNodesMap));
+                updateHosts(cluster, autoRecoveryHostMetadata.keySet(), HostMetadataState.HEALTHY, HostMetadataState.WAITING_FOR_REPAIR,
+                        recoveryMessage);
+            }
+            if (!failedHostMetadata.isEmpty()) {
+                String failedNodesMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_FAILED_NODES_REPORTED.code(),
+                        Collections.singletonList(failedHostMetadata.keySet()));
+                updateHosts(cluster, failedHostMetadata.keySet(), HostMetadataState.HEALTHY, HostMetadataState.UNHEALTHY, failedNodesMessage);
+            }
+            if (!newHealthyNodes.isEmpty()) {
+                String recoveredMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_RECOVERED_NODES_REPORTED.code(),
+                        Collections.singletonList(newHealthyNodes));
+                updateHosts(cluster, newHealthyNodes, HostMetadataState.UNHEALTHY, HostMetadataState.HEALTHY, recoveredMessage);
+            }
         } catch (TransactionExecutionException e) {
             throw new TransactionRuntimeExecutionException(e);
         }
@@ -779,8 +794,7 @@ public class ClusterService {
     private void triggerRepair(Long stackId, Map<String, List<String>> failedNodeMap, boolean removeOnly, List<String> recoveryMessageArgument) {
         if (!failedNodeMap.isEmpty()) {
             flowManager.triggerClusterRepairFlow(stackId, failedNodeMap, removeOnly);
-            String recoveryMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_MANUALRECOVERY_REQUESTED.code(),
-                    Collections.singletonList(recoveryMessageArgument));
+            String recoveryMessage = cloudbreakMessagesService.getMessage(Msg.CLUSTER_MANUALRECOVERY_REQUESTED.code(), List.of(recoveryMessageArgument));
             LOGGER.debug(recoveryMessage);
             eventService.fireCloudbreakEvent(stackId, "RECOVERY", recoveryMessage);
         } else {
@@ -801,23 +815,26 @@ public class ClusterService {
         return rdsConfig == null || DatabaseVendor.EMBEDDED == rdsConfig.getDatabaseEngine();
     }
 
-    private void updateChangedHosts(Cluster cluster, Map<String, HostMetadata> failedHostMetadata, HostMetadataState healthyState,
-            HostMetadataState unhealthyState, String recoveryMessage) throws TransactionExecutionException {
+    private void updateHosts(Cluster cluster, Set<String> hostNames, HostMetadataState expectedState, HostMetadataState newState,
+            String recoveryMessage) throws TransactionExecutionException {
         Set<HostMetadata> hosts = hostMetadataService.findHostsInCluster(cluster.getId());
         Collection<HostMetadata> changedHosts = new HashSet<>();
         transactionService.required(() -> {
             for (HostMetadata host : hosts) {
-                if (host.getHostMetadataState() == unhealthyState && !failedHostMetadata.containsKey(host.getHostName())) {
-                    host.setHostMetadataState(healthyState);
-                    changedHosts.add(host);
-                } else if (host.getHostMetadataState() == healthyState && failedHostMetadata.containsKey(host.getHostName())) {
-                    host.setHostMetadataState(unhealthyState);
+                if (host.getHostMetadataState() == expectedState && hostNames.contains(host.getHostName())) {
+                    host.setHostMetadataState(newState);
                     changedHosts.add(host);
                 }
             }
             if (!changedHosts.isEmpty()) {
                 LOGGER.debug(recoveryMessage);
-                eventService.fireCloudbreakEvent(cluster.getStack().getId(), "RECOVERY", recoveryMessage);
+                String eventType;
+                if (HostMetadataState.HEALTHY.equals(newState)) {
+                    eventType = AVAILABLE.name();
+                } else {
+                    eventType = "RECOVERY";
+                }
+                eventService.fireCloudbreakEvent(cluster.getStack().getId(), eventType, recoveryMessage);
                 hostMetadataService.saveAll(changedHosts);
             }
             return null;
@@ -1376,7 +1393,8 @@ public class ClusterService {
         CLUSTER_START_REQUESTED("cluster.start.requested"),
         CLUSTER_AUTORECOVERY_REQUESTED("cluster.autorecovery.requested"),
         CLUSTER_MANUALRECOVERY_REQUESTED("cluster.manualrecovery.requested"),
-        CLUSTER_FAILED_NODES_REPORTED("cluster.failednodes.reported");
+        CLUSTER_FAILED_NODES_REPORTED("cluster.failednodes.reported"),
+        CLUSTER_RECOVERED_NODES_REPORTED("cluster.recoverednodes.reported");
 
         private final String code;
 
