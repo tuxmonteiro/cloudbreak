@@ -164,7 +164,7 @@ public class RecipeClusterTest extends AbstractIntegrationTest {
 //                .validate();
 //    }
 
-    @Test(dataProvider = TEST_CONTEXT_WITH_MOCK)
+    @Test(dataProvider = TEST_CONTEXT_WITH_MOCK, enabled = false)
     @Description(
             given = "a created cluster with post ambari install recipe",
             when = "upscaling cluster",
@@ -193,7 +193,7 @@ public class RecipeClusterTest extends AbstractIntegrationTest {
                 .validate();
     }
 
-    @Test(dataProvider = TEST_CONTEXT_WITH_MOCK)
+    @Test(dataProvider = TEST_CONTEXT_WITH_MOCK, enabled = false)
     @Description(
             given = "a created cluster with post ambari recipe",
             when = "upscaling cluster on hostgroup which has no post install recipe",
@@ -228,7 +228,7 @@ public class RecipeClusterTest extends AbstractIntegrationTest {
             given = "a created cluster with attached recipe",
             when = "delete attached recipe",
             then = "getting BadRequestException")
-    public void testTryToDeleteAttachedRecipe(TestContext testContext) {
+    public void testTryToDeleteAttachedRecipe(MockedTestContext testContext) {
         String recipeName = resourcePropertyProvider().getName();
         String key = resourcePropertyProvider().getName();
 
