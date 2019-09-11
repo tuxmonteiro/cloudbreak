@@ -6,12 +6,16 @@ import java.util.Map;
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.request.FailureReportV4Request;
 import com.sequenceiq.cloudbreak.client.CloudbreakInternalCrnClient;
+import com.sequenceiq.flow.api.model.FlowLogResponse;
+import com.sequenceiq.flow.api.model.StateStatus;
 import com.sequenceiq.periscope.domain.Cluster;
 import com.sequenceiq.periscope.domain.ClusterManagerVariant;
 import com.sequenceiq.periscope.monitor.context.ClusterIdEvaluatorContext;
@@ -22,6 +26,8 @@ import com.sequenceiq.periscope.service.configuration.CloudbreakClientConfigurat
 @Component("ClusterManagerHostHealthEvaluator")
 @Scope("prototype")
 public class ClusterManagerHostHealthEvaluator extends EvaluatorExecutor {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClusterManagerHostHealthEvaluator.class);
 
     private static final String EVALUATOR_NAME = ClusterManagerHostHealthEvaluator.class.getName();
 
@@ -60,9 +66,18 @@ public class ClusterManagerHostHealthEvaluator extends EvaluatorExecutor {
         List<String> hostNamesToRecover = clusterManagerSpecificHostHealthEvaluator.determineHostnamesToRecover(cluster);
         if (!CollectionUtils.isEmpty(hostNamesToRecover)) {
             CloudbreakInternalCrnClient cbClient = cloudbreakClientConfiguration.cloudbreakInternalCrnClientClient();
-            FailureReportV4Request failureReport = new FailureReportV4Request();
-            failureReport.setFailedNodes(hostNamesToRecover);
-            cbClient.withInternalCrn().autoscaleEndpoint().failureReport(cluster.getStackCrn(), failureReport);
+            if (!hasActiveFlow(cbClient, cluster.getStackCrn())) {
+                FailureReportV4Request failureReport = new FailureReportV4Request();
+                failureReport.setFailedNodes(hostNamesToRecover);
+                cbClient.withInternalCrn().autoscaleEndpoint().failureReport(cluster.getStackCrn(), failureReport);
+            } else {
+                LOGGER.info("Cluster {} has an active flow!", cluster.getStackCrn());
+            }
         }
+    }
+
+    private boolean hasActiveFlow(CloudbreakInternalCrnClient cbClient, String stackCrn) {
+        FlowLogResponse lastFlowByResourceCrn = cbClient.withInternalCrn().flowEndpoint().getLastFlowByResourceCrn(stackCrn);
+        return lastFlowByResourceCrn != null && lastFlowByResourceCrn.getStateStatus().equals(StateStatus.PENDING);
     }
 }

@@ -72,7 +72,7 @@ public class UpdateFailedHandler implements ApplicationListener<UpdateFailedEven
         } else if (RETRY_THRESHOLD - 1 == failed) {
             try {
                 String clusterStatus = stackResponse.getCluster().getStatus().name();
-                if (stackStatus.equals(AVAILABLE) && clusterStatus.equals(AVAILABLE)) {
+                if (stackStatus.equals(AVAILABLE) && clusterStatus.equals(AVAILABLE) && !hasActiveFlow(stackResponse)) {
                     // Cluster manager server is unreacheable but the stack and cluster statuses are "AVAILABLE"
                     reportClusterManagerServerFailure(cluster, stackResponse);
                     suspendCluster(cluster);
@@ -124,5 +124,13 @@ public class UpdateFailedHandler implements ApplicationListener<UpdateFailedEven
                 LOGGER.warn("Exception during failure report. Original message: {}", e.getMessage());
             }
         }
+    }
+
+    private boolean hasActiveFlow(StackV4Response stackResponse) {
+        boolean hasActiveFlow = cloudbreakCommunicator.hasActiveFlow(stackResponse.getCrn());
+        if (hasActiveFlow) {
+            LOGGER.info("Stack with crn {} has an active flow in cloudbreak!", stackResponse.getCrn());
+        }
+        return hasActiveFlow;
     }
 }

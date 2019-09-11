@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +45,9 @@ import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.request.FailureRepor
 import com.sequenceiq.cloudbreak.client.CloudbreakInternalCrnClient;
 import com.sequenceiq.cloudbreak.client.CloudbreakServiceCrnEndpoints;
 import com.sequenceiq.cloudbreak.common.json.JsonUtil;
+import com.sequenceiq.flow.api.FlowEndpoint;
+import com.sequenceiq.flow.api.model.FlowLogResponse;
+import com.sequenceiq.flow.api.model.StateStatus;
 import com.sequenceiq.periscope.api.model.ClusterState;
 import com.sequenceiq.periscope.domain.Cluster;
 import com.sequenceiq.periscope.domain.ClusterManager;
@@ -113,6 +117,7 @@ public class ClusterManagerHostHealthMonitorModuleTest extends RejectedThreadCon
     @Test
     public void testWhenHeartBeatCritical() {
         AutoscaleV4Endpoint autoscaleEndpoint = mock(AutoscaleV4Endpoint.class);
+        FlowEndpoint flowEndpoint = mock(FlowEndpoint.class);
         Cluster cluster = new Cluster();
         long clusterId = 1L;
         String stackCrn = "someCrn";
@@ -124,6 +129,8 @@ public class ClusterManagerHostHealthMonitorModuleTest extends RejectedThreadCon
         when(clusterService.findById(clusterId)).thenReturn(cluster);
         when(internalCrnClient.withInternalCrn()).thenReturn(cbEndpoint);
         when(cbEndpoint.autoscaleEndpoint()).thenReturn(autoscaleEndpoint);
+        when(cbEndpoint.flowEndpoint()).thenReturn(flowEndpoint);
+        when(flowEndpoint.getLastFlowByResourceCrn(anyString())).thenReturn(null);
 
         Map<String, Object> map = new HashMap<>();
         map.put("state", "CRITICAL");
@@ -137,6 +144,42 @@ public class ClusterManagerHostHealthMonitorModuleTest extends RejectedThreadCon
         waitForTasksToFinish();
 
         verify(autoscaleEndpoint, times(1)).failureReport(eq(stackCrn), any(FailureReportV4Request.class));
+        verify(flowEndpoint, times(1)).getLastFlowByResourceCrn(eq(stackCrn));
+    }
+
+    @Test
+    public void testWhenHeartBeatCriticalButHasAnActiveFlow() {
+        AutoscaleV4Endpoint autoscaleEndpoint = mock(AutoscaleV4Endpoint.class);
+        FlowEndpoint flowEndpoint = mock(FlowEndpoint.class);
+        Cluster cluster = new Cluster();
+        long clusterId = 1L;
+        String stackCrn = "someCrn";
+        cluster.setId(clusterId);
+        cluster.setStackCrn(stackCrn);
+        cluster.setClusterManager(new ClusterManager("", "", "", "", ClusterManagerVariant.AMBARI));
+
+        when(jobDetail.getKey()).thenReturn(JobKey.jobKey("test-heart-beat-critical"));
+        when(clusterService.findById(clusterId)).thenReturn(cluster);
+        when(internalCrnClient.withInternalCrn()).thenReturn(cbEndpoint);
+        when(cbEndpoint.autoscaleEndpoint()).thenReturn(autoscaleEndpoint);
+        when(cbEndpoint.flowEndpoint()).thenReturn(flowEndpoint);
+        FlowLogResponse flowLog = new FlowLogResponse();
+        flowLog.setStateStatus(StateStatus.PENDING);
+        when(flowEndpoint.getLastFlowByResourceCrn(anyString())).thenReturn(flowLog);
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("state", "CRITICAL");
+        map.put("host_name", "hostname-recovery");
+        when(ambariClient.getAlert("ambari_server_agent_heartbeat")).thenReturn(Collections.singletonList(map));
+
+        List<Cluster> clusters = Collections.singletonList(cluster);
+        when(clusterService.findAllByStateAndNode(ClusterState.RUNNING, null)).thenReturn(clusters);
+        underTest.execute(context);
+
+        waitForTasksToFinish();
+
+        verify(autoscaleEndpoint, never()).failureReport(eq(stackCrn), any(FailureReportV4Request.class));
+        verify(flowEndpoint, times(1)).getLastFlowByResourceCrn(eq(stackCrn));
     }
 
     @Test

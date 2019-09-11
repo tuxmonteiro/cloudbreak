@@ -13,11 +13,11 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
-import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.stacks.response.StackV4Response;
@@ -29,6 +29,7 @@ import com.sequenceiq.periscope.monitor.event.UpdateFailedEvent;
 import com.sequenceiq.periscope.service.ClusterService;
 import com.sequenceiq.periscope.utils.StackResponseUtils;
 
+@RunWith(MockitoJUnitRunner.class)
 public class UpdateFailedHandlerTest {
 
     private static final long AUTOSCALE_CLUSTER_ID = 1L;
@@ -48,11 +49,6 @@ public class UpdateFailedHandlerTest {
 
     @InjectMocks
     private UpdateFailedHandler underTest;
-
-    @Before
-    public void setup() {
-        MockitoAnnotations.initMocks(this);
-    }
 
     @Test
     public void testOnApplicationEventWhenStatusDelete() {
@@ -86,7 +82,6 @@ public class UpdateFailedHandlerTest {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(cluster);
         when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(Status.AVAILABLE, Status.AVAILABLE));
-        when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
 
         underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
 
@@ -101,7 +96,6 @@ public class UpdateFailedHandlerTest {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(cluster);
         when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(Status.AVAILABLE, Status.AVAILABLE));
-        when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
 
         IntStream.range(0, 3).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
         underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
@@ -118,6 +112,7 @@ public class UpdateFailedHandlerTest {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(cluster);
         when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(Status.AVAILABLE, Status.AVAILABLE));
+        when(cloudbreakCommunicator.hasActiveFlow(anyString())).thenReturn(false);
         when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
 
         IntStream.range(0, 4).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
@@ -128,6 +123,26 @@ public class UpdateFailedHandlerTest {
         verify(clusterService, never()).removeById(AUTOSCALE_CLUSTER_ID);
         verify(cloudbreakCommunicator, times(5)).getByCrn(CLOUDBREAK_STACK_CRN);
         verify(cloudbreakCommunicator).failureReport(eq(CLOUDBREAK_STACK_CRN), any());
+        verify(cloudbreakCommunicator, times(1)).hasActiveFlow(anyString());
+    }
+
+    @Test
+    public void testOnApplicationEventWhenFailsFiveTimesButHasAnActiveFlow() {
+        Cluster cluster = getARunningCluster();
+        when(clusterService.findById(anyLong())).thenReturn(cluster);
+        when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(Status.AVAILABLE, Status.AVAILABLE));
+        when(cloudbreakCommunicator.hasActiveFlow(anyString())).thenReturn(true);
+
+        IntStream.range(0, 4).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
+        underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
+
+        verify(stackResponseUtils, never()).getNotTerminatedPrimaryGateways(any());
+        verify(clusterService, times(5)).findById(AUTOSCALE_CLUSTER_ID);
+        verify(clusterService).setState(cluster, ClusterState.SUSPENDED);
+        verify(clusterService, never()).removeById(AUTOSCALE_CLUSTER_ID);
+        verify(cloudbreakCommunicator, times(5)).getByCrn(CLOUDBREAK_STACK_CRN);
+        verify(cloudbreakCommunicator, times(1)).hasActiveFlow(CLOUDBREAK_STACK_CRN);
+        verify(cloudbreakCommunicator, never()).failureReport(eq(CLOUDBREAK_STACK_CRN), any());
     }
 
     @Test
@@ -135,8 +150,6 @@ public class UpdateFailedHandlerTest {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(cluster);
         when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(Status.AVAILABLE, Status.UPDATE_FAILED));
-        when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
-
         IntStream.range(0, 4).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
         underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
 
@@ -169,7 +182,6 @@ public class UpdateFailedHandlerTest {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(cluster);
         when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(null, null));
-        when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
 
         IntStream.range(0, 3).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
         underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
@@ -186,7 +198,6 @@ public class UpdateFailedHandlerTest {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(cluster);
         when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(null, null));
-        when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
 
         IntStream.range(0, 4).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
         underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
@@ -202,8 +213,6 @@ public class UpdateFailedHandlerTest {
     public void testOnApplicationEventWhenFailsAfterClusterRemove() {
         Cluster cluster = getARunningCluster();
         when(clusterService.findById(anyLong())).thenReturn(null);
-        when(cloudbreakCommunicator.getByCrn(anyString())).thenReturn(getStackResponse(null, null));
-        when(stackResponseUtils.getNotTerminatedPrimaryGateways(any())).thenReturn(getPrimaryGateway());
 
         IntStream.range(0, 4).forEach(i -> underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID)));
         underTest.onApplicationEvent(new UpdateFailedEvent(AUTOSCALE_CLUSTER_ID));
@@ -224,6 +233,7 @@ public class UpdateFailedHandlerTest {
     private StackV4Response getStackResponse(Status stackStatus, Status clusterStatus) {
         StackV4Response stackResponse = new StackV4Response();
         stackResponse.setStatus(stackStatus);
+        stackResponse.setCrn(CLOUDBREAK_STACK_CRN);
         ClusterV4Response clusterResponse = new ClusterV4Response();
         clusterResponse.setStatus(clusterStatus);
         stackResponse.setCluster(clusterResponse);
