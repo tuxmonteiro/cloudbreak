@@ -82,6 +82,11 @@ public class DistroXTestDto extends DistroXTestDtoBase<DistroXTestDto> implement
     }
 
     @Override
+    public int order() {
+        return 400;
+    }
+
+    @Override
     public Class<CloudbreakClient> client() {
         return CloudbreakClient.class;
     }

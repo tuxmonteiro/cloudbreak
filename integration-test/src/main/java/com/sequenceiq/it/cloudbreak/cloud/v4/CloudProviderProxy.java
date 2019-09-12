@@ -32,6 +32,7 @@ import com.sequenceiq.it.cloudbreak.dto.freeipa.FreeIPATestDto;
 import com.sequenceiq.it.cloudbreak.dto.imagecatalog.ImageCatalogTestDto;
 import com.sequenceiq.it.cloudbreak.dto.sdx.SdxCloudStorageTestDto;
 import com.sequenceiq.it.cloudbreak.dto.sdx.SdxInternalTestDto;
+import com.sequenceiq.it.cloudbreak.dto.sdx.SdxRepairTestDto;
 import com.sequenceiq.it.cloudbreak.dto.sdx.SdxTestDto;
 import com.sequenceiq.it.cloudbreak.dto.stack.StackTestDtoBase;
 import com.sequenceiq.sdx.api.model.SdxClusterShape;
@@ -126,6 +127,11 @@ public class CloudProviderProxy implements CloudProvider {
     @Override
     public SdxInternalTestDto sdxInternal(SdxInternalTestDto sdxInternal) {
         return delegate.sdxInternal(sdxInternal);
+    }
+
+    @Override
+    public SdxRepairTestDto sdxRepair(SdxRepairTestDto sdxRepair) {
+        return delegate.sdxRepair(sdxRepair);
     }
 
     @Override
