@@ -76,4 +76,19 @@ public class StackCreatorServiceTest {
 
         assertTrue(base);
     }
+
+    @Test
+    public void testIfRecipeDoesNotExistsWhichIsGivenInOneOfTheHostgroupsThenBadRequestExceptionShouldCome() {
+        ClusterV4Request clusterV4Request = new ClusterV4Request();
+        ClouderaManagerV4Request cmRequest = new ClouderaManagerV4Request();
+        ClouderaManagerProductV4Request cdpRequest = new ClouderaManagerProductV4Request();
+        cdpRequest.setName("CDP");
+        cdpRequest.setParcel("pacel");
+        cdpRequest.setVersion("version");
+        cmRequest.setProducts(List.of(cdpRequest));
+        ClouderaManagerRepositoryV4Request cmRepoRequest = new ClouderaManagerRepositoryV4Request();
+
+
+    }
+
 }

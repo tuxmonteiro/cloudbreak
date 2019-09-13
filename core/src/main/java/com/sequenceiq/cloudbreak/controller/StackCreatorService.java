@@ -1,5 +1,6 @@
 package com.sequenceiq.cloudbreak.controller;
 
+import static com.sequenceiq.cloudbreak.api.endpoint.v4.recipes.dto.RecipeAccessDto.RecipeAccessDtoBuilder.aRecipeAccessDtoBuilder;
 import static com.sequenceiq.cloudbreak.service.metrics.MetricType.STACK_PREPARATION;
 import static com.sequenceiq.cloudbreak.util.Benchmark.measure;
 import static com.sequenceiq.cloudbreak.util.SqlUtil.getProperSqlErrorMessage;
@@ -37,9 +38,6 @@ import com.sequenceiq.cloudbreak.common.service.TransactionService.TransactionEx
 import com.sequenceiq.cloudbreak.common.service.TransactionService.TransactionRuntimeExecutionException;
 import com.sequenceiq.cloudbreak.common.type.APIResourceType;
 import com.sequenceiq.cloudbreak.controller.validation.ParametersValidator;
-import com.sequenceiq.cloudbreak.validation.ValidationResult;
-import com.sequenceiq.cloudbreak.validation.ValidationResult.State;
-import com.sequenceiq.cloudbreak.validation.Validator;
 import com.sequenceiq.cloudbreak.controller.validation.filesystem.FileSystemValidator;
 import com.sequenceiq.cloudbreak.controller.validation.template.TemplateValidator;
 import com.sequenceiq.cloudbreak.converter.spi.CredentialToCloudCredentialConverter;
@@ -54,6 +52,7 @@ import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceGroup;
 import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
 import com.sequenceiq.cloudbreak.dto.credential.Credential;
 import com.sequenceiq.cloudbreak.exception.BadRequestException;
+import com.sequenceiq.cloudbreak.exception.NotFoundException;
 import com.sequenceiq.cloudbreak.logger.MDCBuilder;
 import com.sequenceiq.cloudbreak.repository.ClusterComponentRepository;
 import com.sequenceiq.cloudbreak.service.ClusterCreationSetupService;
@@ -67,8 +66,12 @@ import com.sequenceiq.cloudbreak.service.environment.credential.CredentialClient
 import com.sequenceiq.cloudbreak.service.image.ImageService;
 import com.sequenceiq.cloudbreak.service.image.StatedImage;
 import com.sequenceiq.cloudbreak.service.metrics.CloudbreakMetricService;
+import com.sequenceiq.cloudbreak.service.recipe.RecipeService;
 import com.sequenceiq.cloudbreak.service.sharedservice.SharedServiceConfigProvider;
 import com.sequenceiq.cloudbreak.service.stack.StackService;
+import com.sequenceiq.cloudbreak.validation.ValidationResult;
+import com.sequenceiq.cloudbreak.validation.ValidationResult.State;
+import com.sequenceiq.cloudbreak.validation.Validator;
 import com.sequenceiq.cloudbreak.workspace.model.User;
 import com.sequenceiq.cloudbreak.workspace.model.Workspace;
 import com.sequenceiq.environment.api.v1.environment.model.response.DetailedEnvironmentResponse;
@@ -145,6 +148,9 @@ public class StackCreatorService {
     @Inject
     private ClusterComponentRepository clusterComponentRepository;
 
+    @Inject
+    private RecipeService recipeService;
+
     public StackV4Response createStack(User user, Workspace workspace, StackV4Request stackRequest) {
         long start = System.currentTimeMillis();
         blueprintService.updateDefaultBlueprintCollection(workspace.getId());
@@ -154,6 +160,8 @@ public class StackCreatorService {
             LOGGER.debug("Stack request has validation error(s): {}.", validationResult.getFormattedErrors());
             throw new BadRequestException(validationResult.getFormattedErrors());
         }
+
+        validateRecipeExistence(stackRequest, workspace.getId());
 
         String stackName = stackRequest.getName();
         LOGGER.info("Check that stack with {} name does not exist.", stackName);
@@ -257,6 +265,18 @@ public class StackCreatorService {
         metricService.submit(STACK_PREPARATION, System.currentTimeMillis() - start);
 
         return response;
+    }
+
+    private void validateRecipeExistence(StackV4Request stackRequest, Long workspaceId) {
+        stackRequest.getInstanceGroups().forEach(igv4r -> igv4r.getRecipeNames().forEach(s -> seekForRecipeOrElseThrowBadRequest(s, workspaceId)));
+    }
+
+    private void seekForRecipeOrElseThrowBadRequest(String recipeName, Long workspaceId) {
+        try {
+            recipeService.get(aRecipeAccessDtoBuilder().withName(recipeName).build(), workspaceId);
+        } catch (NotFoundException nfe) {
+            throw new BadRequestException("The given recipe does not exists hence unable to start the cluster: " + recipeName, nfe);
+        }
     }
 
     private void setStackTypeAndValidateDatalake(Stack stack, Blueprint blueprint) {
