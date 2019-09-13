@@ -73,7 +73,7 @@ public class ClouderaManagerParcelActivationListenerTask extends AbstractClouder
                         .orElseThrow(() -> new CloudbreakServiceException("Cluster component attribute json cannot be null."))
                         .get(attributeClass);
             } catch (IOException e) {
-                throw new CloudbreakServiceException("Cannot deserialize the compnent: " + attributeClass, e);
+                throw new CloudbreakServiceException("Cannot deserialize the component: " + attributeClass, e);
             }
         };
     }
